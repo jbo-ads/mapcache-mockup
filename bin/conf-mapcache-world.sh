@@ -45,7 +45,10 @@ cat <<-EOF > /var/www/html/ol/world.js
 	layers.unshift(world)
 	EOF
 
-gawk -i inplace '/anchor/{print l};{print}' \
-	l='<script src="world.js"></script>' \
-	/var/www/html/ol/index.html
+if ! grep -q "world.js" /var/www/html/ol/index.html
+then
+	gawk -i inplace '/anchor/{print l};{print}' \
+		l='<script src="world.js"></script>' \
+		/var/www/html/ol/index.html
+fi
 

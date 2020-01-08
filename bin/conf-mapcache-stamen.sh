@@ -80,7 +80,9 @@ cat <<-EOF > ${cfgdir}/stamen.xml
 		</tileset>
 
 		<service type="wmts" enabled="true"/>
-		<service type="wms" enabled="true"/>
+		<service type="wms" enabled="true">
+			<maxsize>4096</maxsize>
+		</service>
 	</mapcache>
 	EOF
 

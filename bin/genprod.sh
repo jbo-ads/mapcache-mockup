@@ -3,16 +3,23 @@
 
 # ARGUMENTS
 
+if [ "x$1" == "x--random" ]
+then
+  shift
+  israndom=true
+fi
+
 if [ $# -ne 6 ]
 then
-  printf "Error: Need 6 arguments\n" >&2
+  printf "Error: Need 6 (alt:7) arguments\n" >&2
   printf "Usage: $0 name center-x center-y format provider layer\n" >&2
-  printf "  alt: $0 --random name xmin ymin xmax ymax\n" >&2
+  printf "  alt: $0 --random nprod name xmin ymin xmax ymax\n" >&2
   exit 1
 fi
 
-if [ "x$1" == "x--random" ]
+if ${israndom}
 then
+  nprod=${1}
   name=${2}_$(cat /proc/sys/kernel/random/uuid | tr '-' '_')
   xmin=$(tr '-' '_' <<< ${3})
   ymin=$(tr '-' '_' <<< ${4})
@@ -22,7 +29,7 @@ then
   y=$(dc <<< "20k ${ymax} ${ymin} - $RANDOM 32768/* ${ymin}+p" | tr '-' '_')
   fmts=(horizontal vertical square)
   fmt=${fmts[$((RANDOM*${#fmts[@]}/32768))]}
-  srcs=(stamen:watercolor stamen:terrain stamen:toner-lite heigit:osm)
+  srcs=(stamen:terrain stamen:toner-lite osm:openstreetmap osm:wikimedia osm:opentopomap)
   IFS=: read provider layer <<< "${srcs[$((RANDOM*${#srcs[@]}/32768))]}"
   echo $name $x $y $fmt $provider $layer
 else
@@ -82,7 +89,7 @@ then
     printf "Error downloading image \"${name}\", retrying\n" >&2
     sleep ${retry}
     retry=$((retry+1))
-    if [ ${retry} -ge 20 ]
+    if [ ${retry} -ge 10 ]
     then
       rm -f /share/caches/product/image/${name}.jpg
       printf "Failed to download image \"${name}\", terminating\n" >&2

@@ -1,7 +1,6 @@
 #!/bin/bash
 
 cfgdir=/usr/local/etc/mapcache
-srcdir=/usr/local/src
 mkdir -p ${cfgdir}
 
 cat <<-EOF > ${cfgdir}/heigit.xml

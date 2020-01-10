@@ -1,119 +1,86 @@
 #!/bin/bash
 
 
-# ARGUMENTS
+# FUNCTIONS DECLARATIONS
 
-if [ "x$1" == "x--random" ]
-then
-  shift
-  israndom=true
-fi
+# Get width, height and bbox from center and format
+imageparams() {
+  x=$(tr '-' '_' <<< $1) y=$(tr '-' '_' <<< $2) fmt=$3
+  l=9783.94
+  if   [ ${fmt} == "horizontal" ]; then w=12;h=8;
+  elif [ ${fmt} == "vertical" ];   then w=8 ;h=12;
+  elif [ ${fmt} == "square" ];     then w=10;h=10;
+  else                                  w=6 ;h=6;
+  fi
+  dc  <<< "256 $w *n[ ]n         # width
+           256 $h *n[ ]n         # height
+           2k $x $l $w 2/*-n[ ]n # minx
+           2k $y $l $h 2/*-n[ ]n # miny
+           2k $x $l $w 2/*+n[ ]n # maxx
+           2k $y $l $h 2/*+n[ ]n # maxy
+           []pq"
+}
 
-if [ $# -ne 6 ]
-then
-  printf "Error: Need 6 (alt:7) arguments\n" >&2
-  printf "Usage: $0 name center-x center-y format provider layer\n" >&2
-  printf "  alt: $0 --random nprod name xmin ymin xmax ymax\n" >&2
-  exit 1
-fi
-
-if ${israndom}
-then
-  nprod=${1}
-  name=${2}_$(cat /proc/sys/kernel/random/uuid | tr '-' '_')
-  xmin=$(tr '-' '_' <<< ${3})
-  ymin=$(tr '-' '_' <<< ${4})
-  xmax=$(tr '-' '_' <<< ${5})
-  ymax=$(tr '-' '_' <<< ${6})
-  x=$(dc <<< "20k ${xmax} ${xmin} - $RANDOM 32768/* ${xmin}+p" | tr '-' '_')
-  y=$(dc <<< "20k ${ymax} ${ymin} - $RANDOM 32768/* ${ymin}+p" | tr '-' '_')
-  fmts=(horizontal vertical square)
-  fmt=${fmts[$((RANDOM*${#fmts[@]}/32768))]}
-  srcs=(stamen:terrain stamen:toner-lite osm:openstreetmap osm:wikimedia osm:opentopomap)
-  IFS=: read provider layer <<< "${srcs[$((RANDOM*${#srcs[@]}/32768))]}"
-  echo $name $x $y $fmt $provider $layer
-else
-  name=${1}
-  x=$(tr '-' '_' <<< ${2})
-  y=$(tr '-' '_' <<< ${3})
-  fmt=${4}
-  provider="${5}"
-  layer=${6}
-fi
-
-
-# APACHE SERVER
-
-http="http://localhost:80"
-if ! curl -s "${http}" > /dev/null 2>&1
-then
-  printf "Error: MapCache server has failed\n" >&2
-  exit 1
-fi
-
-
-# IMAGE PARAMETERS
-
-if   [ ${fmt} == "horizontal" ]; then w=12;h=8;
-elif [ ${fmt} == "vertical" ];   then w=8 ;h=12;
-elif [ ${fmt} == "square" ];     then w=10;h=10;
-else                                  w=6 ;h=6;
-fi
-
-l=9783.94
-minx=$(echo "2k $x $l $w 2/*-pq" | dc)
-miny=$(echo "2k $y $l $h 2/*-pq" | dc)
-maxx=$(echo "2k $x $l $w 2/*+pq" | dc)
-maxy=$(echo "2k $y $l $h 2/*+pq" | dc)
-width=$(echo 256 $w *pq | dc)
-height=$(echo 256 $h *pq | dc)
-
-
-# JPEG IMAGE FROM MAPCACHE WMS
-
-if [ ! -f /share/caches/product/image/${name}.jpg ]
-then
-  mkdir -p /share/caches/product/image
+# Get JPEG map from WMS server
+getjpeg() {
+  name=$1 width=$2 height=$3 bbox=$4 provider=$5 layer=$6
+  http="http://localhost:80"
+  if ! curl -s "${http}" > /dev/null 2>&1
+  then
+    printf "Error: MapCache server has failed\n" >&2
+    exit 1
+  fi
   req="${http}/${provider}?SERVICE=WMS&REQUEST=GetMap&SRS=EPSG:3857"
   req="${req}&LAYERS=${layer}&WIDTH=${width}&HEIGHT=${height}"
-  req="${req}&BBOX=${minx},${miny},${maxx},${maxy}"
+  req="${req}&BBOX=${bbox}"
   retry=0
   echo "${req}"
-  while true
-  do
-    curl "${req}" > /share/caches/product/image/${name}.jpg 2> /dev/null
-    if file /share/caches/product/image/${name}.jpg | grep -q JPEG
-    then
-      break
-    fi
-    printf "Error downloading image \"${name}\", retrying\n" >&2
-    sleep ${retry}
-    retry=$((retry+1))
-    if [ ${retry} -ge 10 ]
-    then
-      rm -f /share/caches/product/image/${name}.jpg
-      printf "Failed to download image \"${name}\", terminating\n" >&2
-      exit 1
-    fi
-  done
-fi
+  if [ ! -f /share/caches/product/image/${name}.jpg ]
+  then
+    mkdir -p /share/caches/product/image
+    while true
+    do
+      curl "${req}" > /share/caches/product/image/${name}.jpg 2> /dev/null
+      if file /share/caches/product/image/${name}.jpg | grep -q JPEG
+      then
+        break
+      fi
+      printf "Error downloading image \"${name}\", retrying\n" >&2
+      sleep ${retry}
+      retry=$((retry+1))
+      if [ ${retry} -ge 10 ]
+      then
+        rm -f /share/caches/product/image/${name}.jpg
+        printf "Failed to download image \"${name}\"\n" >&2
+        exit 1
+      fi
+    done
+  fi
+}
 
+# Convert JPEG map to GEOTIFF
+jpeg2geotiff() {
+  name=$1 minx=$2 miny=$3 maxx=$4 maxy=$5
+  if [ ! -f /share/caches/product/image/${name}.tif ]
+  then
+    gdal_translate -a_srs EPSG:3857 -a_ullr ${minx} ${maxy} ${maxx} ${miny} \
+      /share/caches/product/image/${name}.jpg \
+      /share/caches/product/image/${name}.tif
+  fi
+}
 
-# GEOTIFF IMAGE FROM JPEG IMAGE USING GDAL_TRANSLATE
-
-if [ ! -f /share/caches/product/image/${name}.tif ]
-then
-  gdal_translate -a_srs EPSG:3857 -a_ullr ${minx} ${maxy} ${maxx} ${miny} \
-    /share/caches/product/image/${name}.jpg \
-    /share/caches/product/image/${name}.tif
-fi
-
-
-# SQLITE CACHE FROM GEOTIFF IMAGE USING MAPCACHE_SEED
-
-if [ ! -f /share/caches/product/${name}.sqlite3 ]
-then
-  cat <<-EOF > /share/caches/mapcache-${name}.xml
+# Convert GEOTIFF to SQLite cache
+geotiff2tiles() {
+  name=$1
+  read minx miny \
+    < <(awk -F'[ (),]+' '/Lower Left/{print$3,$4}' \
+          < <(gdalinfo /share/caches/product/image/${name}.tif))
+  read maxx maxy \
+    < <(awk -F'[ (),]+' '/Upper Right/{print$3,$4}' \
+          < <(gdalinfo /share/caches/product/image/${name}.tif))
+  if [ ! -f /share/caches/product/${name}.sqlite3 ]
+  then
+    cat <<-EOF > /share/caches/temp-${name}.xml
 	<?xml version="1.0" encoding="UTF-8"?>
 	<mapcache>
 		<source name="${name}" type="gdal">
@@ -128,38 +95,102 @@ then
 			<grid>GoogleMapsCompatible</grid>
 			<format>PNG</format>
 		</tileset>
-		<service type="wmts" enabled="true"/>
 		<service type="wms" enabled="true"/>
-		<log_level>debug</log_level>
-		<threaded_fetching>true</threaded_fetching>
 	</mapcache>
 	EOF
 
-  mapcache_seed -c /share/caches/mapcache-${name}.xml \
-                -e ${minx},${miny},${maxx},${maxy} \
-                -g GoogleMapsCompatible \
-                -t ${name} \
-                -z 0,13 \
-  && rm /share/caches/mapcache-${name}.xml \
-  || exit 1
+    mapcache_seed -c /share/caches/temp-${name}.xml \
+                  -e ${minx},${miny},${maxx},${maxy} \
+                  -g GoogleMapsCompatible \
+                  -t ${name} \
+                  -z 0,13 \
+    && rm /share/caches/temp-${name}.xml \
+    || exit 1
 
-  cp /share/caches/product/${name}.sqlite3 \
-     /share/caches/product/${name}_i.sqlite3
-  sqlite3 /share/caches/product/${name}_i.sqlite3 \
-          'CREATE UNIQUE INDEX xyz ON tiles(x,y,z);'
-fi
+    cp /share/caches/product/${name}.sqlite3 \
+       /share/caches/product/${name}_i.sqlite3
+    sqlite3 /share/caches/product/${name}_i.sqlite3 \
+            'CREATE UNIQUE INDEX xyz ON tiles(x,y,z);'
+  fi
+}
 
-
-# CATALOG ENTRY
-
-catalog="/share/caches/product/catalog.sqlite"
-if [ ! -f "${catalog}" ]
-then
+# Append entry to catalog
+appendtocatalog() {
+  name=$1 minx=$2 miny=$3 maxx=$4 maxy=$5
+  catalog="/share/caches/product/catalog.sqlite"
+  if [ ! -f "${catalog}" ]
+  then
+    sqlite3 "${catalog}" \
+      "CREATE TABLE catalog(
+          name TEXT,
+          minx REAL,
+          miny REAL,
+          maxx REAL,
+          maxy REAL,
+          keywords TEXT);"
+  fi
   sqlite3 "${catalog}" \
-    "CREATE TABLE catalog(name TEXT, minx REAL, miny REAL, maxx REAL, maxy REAL);"
+    "INSERT OR IGNORE INTO catalog(name,minx,miny,maxx,maxy,keywords)
+     VALUES(\"${name}\",${minx},${miny},${maxx},${maxy},\"${keywords}\");"
+}
+
+# Generate a single simulated product
+generateproduct() {
+  name=$1 x=$2 y=$3 fmt=$4 provider=$5 layer=$6
+  read -r width height minx miny maxx maxy < <(imageparams $x $y $fmt)
+  getjpeg $name $width $height $minx,$miny,$maxx,$maxy $provider $layer || exit 1
+  jpeg2geotiff $name $minx $miny $maxx $maxy
+  geotiff2tiles $name || exit 1
+  appendtocatalog $name $minx $miny $maxx $maxy $keywords
+}
+
+
+# ARGUMENTS
+
+if [ $# -ne 7 ]
+then
+  printf "Error: Need 7 arguments\n" >&2
+  printf "Usage: $0 name center-x center-y format provider layer keywords\n" >&2
+  printf "  alt: $0 --random nprod name xmin ymin xmax ymax\n" >&2
+  exit 1
 fi
-sqlite3 "${catalog}" \
-  "INSERT OR IGNORE INTO catalog(name,minx,miny,maxx,maxy)
-   VALUES(\"${name}\",${minx},${miny},${maxx},${maxy});"
 
+if [ "x$1" == "x--random" ]
+then
+  israndom=true
+  nprod=${1}
+  prefix=${2}
+  xmin=$(tr '-' '_' <<< ${3})
+  ymin=$(tr '-' '_' <<< ${4})
+  xmax=$(tr '-' '_' <<< ${5})
+  ymax=$(tr '-' '_' <<< ${6})
+  fmts=(horizontal vertical square)
+  srcs=(stamen:terrain stamen:toner-lite osm:openstreetmap osm:wikimedia osm:opentopomap)
+  keywords=${prefix}
+else
+  israndom=false
+  nprod=1
+  name=${1}
+  x=${2}
+  y=${3}
+  fmt=${4}
+  provider=${5}
+  layer=${6}
+  keywords=${7}
+fi
 
+for i in $(seq 1 $nprod)
+do
+  echo
+  if ${israndom}
+  then
+    name=${prefix}_$(cat /proc/sys/kernel/random/uuid | tr '-' '_')
+    x=$(dc <<< "20k ${xmax} ${xmin} - $RANDOM 32768/* ${xmin}+p")
+    y=$(dc <<< "20k ${ymax} ${ymin} - $RANDOM 32768/* ${ymin}+p")
+    fmt=${fmts[$((RANDOM*${#fmts[@]}/32768))]}
+    IFS=: read provider layer <<< "${srcs[$((RANDOM*${#srcs[@]}/32768))]}"
+    printf "$i: "
+  fi
+  echo $name $x $y $fmt $provider $layer $keywords
+  generateproduct $name $x $y $fmt $provider $layer $keywords
+done

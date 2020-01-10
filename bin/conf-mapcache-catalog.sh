@@ -21,9 +21,12 @@ cat <<-EOF > ${cfgdir}/catalog.xml
 			<dimensions>
 				<assembly_type>stack</assembly_type>
 				<store_assemblies>false</store_assemblies>
-				<dimension name="product" default="all" type="sqlite">
+				<dimension name="product" default="%" type="sqlite">
 					<dbfile>/share/caches/product/catalog.sqlite</dbfile>
-					<validate_query>select distinct(name) from catalog</validate_query>
+					<validate_query>
+						select distinct(name) from catalog
+						where keywords like "%" || :dim || "%"
+					</validate_query>
 					<list_query>select distinct(name) from catalog</list_query>
 				</dimension>
 			</dimensions>

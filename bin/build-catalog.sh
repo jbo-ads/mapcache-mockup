@@ -2,7 +2,8 @@
 
 bindir="$(cd "$(dirname "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 
-# Generate simulated products over cities where UN agencies are located
+
+# Generate simulated products over cities UN representations
 for prod in \
   bern:828195:5933741:horizontal:osm:openstreetmap:un,europe \
   geneva:685269:5813644:horizontal:osm:openstreetmap:un,europe \
@@ -20,3 +21,15 @@ for prod in \
   IFS=: read name x y format provider layer keywords <<< $prod
   ${bindir}/genprod.sh $name $x $y $format $provider $layer $keywords
 done
+
+
+# Generate random simulated products over USA
+${bindir}/genprod.sh --random 200 usa -12973503 3456176 -9069712 6281289
+
+
+# Generate random simulated products over Europe
+${bindir}/genprod.sh --random 50 europe 523440 5557277 3204240 7044436
+
+
+# Generate random simulated products over Australia
+${bindir}/genprod.sh --random 100 australia 13585000 -3708113 16256015 -1995923

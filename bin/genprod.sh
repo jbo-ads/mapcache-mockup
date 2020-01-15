@@ -158,12 +158,12 @@ fi
 if [ "x$1" == "x--random" ]
 then
   israndom=true
-  nprod=${1}
-  prefix=${2}
-  xmin=$(tr '-' '_' <<< ${3})
-  ymin=$(tr '-' '_' <<< ${4})
-  xmax=$(tr '-' '_' <<< ${5})
-  ymax=$(tr '-' '_' <<< ${6})
+  nprod=${2}
+  prefix=${3}
+  xmin=$(tr '-' '_' <<< ${4})
+  ymin=$(tr '-' '_' <<< ${5})
+  xmax=$(tr '-' '_' <<< ${6})
+  ymax=$(tr '-' '_' <<< ${7})
   fmts=(horizontal vertical square)
   srcs=(stamen:terrain stamen:toner-lite osm:openstreetmap osm:wikimedia osm:opentopomap)
   keywords=${prefix}

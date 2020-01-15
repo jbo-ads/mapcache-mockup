@@ -10,7 +10,9 @@ import argparse
 p = argparse.ArgumentParser(description='Parse Apache log files for time profiling')
 p.add_argument("--nolog", dest='log', action='store_false',
                help='Don\'t display log entries')
-p.set_defaults(log=True)
+p.add_argument("--log", dest='log', action='store_true',
+               help='Display log entries (default)')
+p.set_defaults(log=True,stat=False)
 args = p.parse_args()
 
 # Pattern for localizing relevant information from an Apache log line
@@ -71,28 +73,30 @@ for line in sys.stdin:
     statistics['s2'] = statistics['s2'] + sample*sample
     if sample > statistics['max']: statistics['max'] = sample
     if sample < statistics['min']: statistics['min'] = sample
-    
-
-
-# Display log by thread with call graph indentation
-if args.log:
-  for thread in logbythread:
-    indent = 1
-    seq = logbythread[thread]
-    print('\nThread #'+thread+':')
-    for log in seq:
-      if log['type'] == '*END*': indent = indent - 1
-      dl = { log['func']: log['delta_us'] }
-      print('  '*indent,dl)
-      if log['type'] == '*BEGIN*': indent = indent + 1
-  print()
+  if ( log['type'] == '*END*'
+       and log['func'] in [ 'mapcache_handler', '_thread_get_tile' ] ):
+    thread = log['thrkey']
+    # Display log by thread with call graph indentation
+    if args.log:
+      disptype = { '*BEGIN*': 'BEGIN:', '*END*': 'END..:' }
+      indent = 1
+      seq = logbythread[thread]
+      print('Thread #'+thread+':')
+      for log in seq:
+        if log['type'] == '*END*': indent = indent - 1
+        dl = { disptype[log['type']]+log['func']: log['delta_us'] }
+        print('  '*indent,dl)
+        if log['type'] == '*BEGIN*': indent = indent + 1
+      print()
+    del logbythread[thread]
 
 
 # Display statistics
-mean = statistics['s'] / statistics['n']
-variance = statistics['s2'] / statistics['n'] - mean*mean
-stddev = sqrt(abs(variance))
-statistics['mean'] = mean
-statistics['variance'] = variance
-statistics['stddev'] = stddev
-print(statistics)
+if args.stat:
+  mean = statistics['s'] / statistics['n']
+  variance = statistics['s2'] / statistics['n'] - mean*mean
+  stddev = sqrt(abs(variance))
+  statistics['mean'] = mean
+  statistics['variance'] = variance
+  statistics['stddev'] = stddev
+  print(statistics)

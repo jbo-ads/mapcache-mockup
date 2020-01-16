@@ -23,8 +23,20 @@ for prod in \
 done
 
 
+# Generate simulated products over mountain tops
+for prod in \
+  kilimanjaro:4158738:-341315:square:osm:opentopomap:peak,africa \
+  aconcagua:-7793642:-3849409:square:osm:opentopomap:peak,america \
+  everest:9676427:3247443:square:osm:opentopomap:peak,asia \
+  elbrus:4724162:5365787:square:osm:opentopomap:peak,europe \
+; do
+  IFS=: read name x y format provider layer keywords <<< $prod
+  ${bindir}/genprod.sh $name $x $y $format $provider $layer $keywords
+done
+
+
 # Generate random simulated products over USA
-${bindir}/genprod.sh --random 200 usa -12973503 3456176 -9069712 6281289
+${bindir}/genprod.sh --random 200 usa,america -12973503 3456176 -9069712 6281289
 
 
 # Generate random simulated products over Europe
@@ -32,4 +44,4 @@ ${bindir}/genprod.sh --random 50 europe 523440 5557277 3204240 7044436
 
 
 # Generate random simulated products over Australia
-${bindir}/genprod.sh --random 100 australia 13585000 -3708113 16256015 -1995923
+${bindir}/genprod.sh --random 100 australia,oceania 13585000 -3708113 16256015 -1995923

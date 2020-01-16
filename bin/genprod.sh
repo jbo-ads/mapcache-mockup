@@ -151,7 +151,7 @@ if [ $# -ne 7 ]
 then
   printf "Error: Need 7 arguments\n" >&2
   printf "Usage: $0 name center-x center-y format provider layer keywords\n" >&2
-  printf "  alt: $0 --random nprod name xmin ymin xmax ymax\n" >&2
+  printf "  alt: $0 --random nprod name,keywords xmin ymin xmax ymax\n" >&2
   exit 1
 fi
 
@@ -159,14 +159,14 @@ if [ "x$1" == "x--random" ]
 then
   israndom=true
   nprod=${2}
-  prefix=${3}
+  keywords=${3}
+  IFS=, read prefix other <<< ${keywords}
   xmin=$(tr '-' '_' <<< ${4})
   ymin=$(tr '-' '_' <<< ${5})
   xmax=$(tr '-' '_' <<< ${6})
   ymax=$(tr '-' '_' <<< ${7})
   fmts=(horizontal vertical square)
   srcs=(stamen:terrain stamen:toner-lite osm:openstreetmap osm:wikimedia osm:opentopomap)
-  keywords=${prefix}
 else
   israndom=false
   nprod=1

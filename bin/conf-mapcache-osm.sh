@@ -138,9 +138,12 @@ cat <<-EOF > ${cfgdir}/osm.xml
 	</mapcache>
 	EOF
 
+sed '$s:^:<threaded_fetching>true</threaded_fetching>\n:' ${cfgdir}/osm.xml > ${cfgdir}/osm-mt.xml
+
 cat <<-EOF > /etc/apache2/conf-enabled/osm.conf
 	<IfModule mapcache_module>
 		MapCacheAlias "/osm" "${cfgdir}/osm.xml"
+		MapCacheAlias "/osm-mt" "${cfgdir}/osm-mt.xml"
 	</IfModule>
 	EOF
 

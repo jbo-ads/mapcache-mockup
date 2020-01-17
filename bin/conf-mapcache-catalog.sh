@@ -6,10 +6,6 @@ mkdir -p ${cfgdir}
 cat <<-EOF > ${cfgdir}/catalog.xml
 	<?xml version="1.0" encoding="UTF-8"?>
 	<mapcache>
-		<format name="PNG16" type="RAW">
-			<extension>png</extension>
-			<mime_type>image/png</mime_type>
-		</format>
 		<cache name="catalog" type="sqlite3">
 			<dbfile>/share/caches/product/{dim:product}.sqlite3</dbfile>
 			<queries><get>select data from tiles where x=:x and y=:y and z=:z</get></queries>
@@ -49,23 +45,20 @@ cat <<-EOF > ${cfgdir}/catalog.xml
 	</mapcache>
 	EOF
 
+sed '/assembly_type/s:^:<assembly_threaded_fetching>true</assembly_threaded_fetching>\n:' ${cfgdir}/catalog.xml > ${cfgdir}/catalog-amt.xml
+sed '$s:^:<threaded_fetching>true</threaded_fetching>\n:' ${cfgdir}/catalog.xml > ${cfgdir}/catalog-mt.xml
+sed '$s:^:<threaded_fetching>true</threaded_fetching>\n:' ${cfgdir}/catalog-amt.xml > ${cfgdir}/catalog-mtamt.xml
+
 cat <<-EOF > /etc/apache2/conf-enabled/catalog.conf
 	<IfModule mapcache_module>
 		MapCacheAlias "/catalog" "${cfgdir}/catalog.xml"
+		MapCacheAlias "/catalog-amt" "${cfgdir}/catalog-amt.xml"
+		MapCacheAlias "/catalog-mt" "${cfgdir}/catalog-mt.xml"
+		MapCacheAlias "/catalog-mtamt" "${cfgdir}/catalog-mtamt.xml"
 	</IfModule>
 	EOF
 
 cat <<-EOF > /var/www/html/ol/catalog.js
-	var catalogbm = new ol.layer.Tile({
-		title: 'Image Catalog (with basemap)',
-		type: 'base',
-		visible: false,
-		source: new ol.source.TileWMS({
-			url: 'http://'+location.host+'/catalog?',
-			params: {'LAYERS': 'base,catalog', 'VERSION': '1.1.1'}
-		})
-	});
-	layers.unshift(catalogbm)
 	var catalog = new ol.layer.Tile({
 		title: 'Image Catalog (raw)',
 		type: 'base',
@@ -76,6 +69,26 @@ cat <<-EOF > /var/www/html/ol/catalog.js
 		})
 	});
 	layers.unshift(catalog)
+	var catalogbm = new ol.layer.Tile({
+		title: 'Image Catalog (with basemap)',
+		type: 'base',
+		visible: false,
+		source: new ol.source.TileWMS({
+			url: 'http://'+location.host+'/catalog?',
+			params: {'LAYERS': 'base,catalog', 'VERSION': '1.1.1'}
+		})
+	});
+	layers.unshift(catalogbm)
+	var catalogbmamt = new ol.layer.Tile({
+		title: 'Image Catalog (with basemap) [multi-threaded subtiles]',
+		type: 'base',
+		visible: false,
+		source: new ol.source.TileWMS({
+			url: 'http://'+location.host+'/catalog-amt?',
+			params: {'LAYERS': 'base,catalog', 'VERSION': '1.1.1'}
+		})
+	});
+	layers.unshift(catalogbmamt)
 	EOF
 
 if ! grep -q "catalog.js" /var/www/html/ol/index.html

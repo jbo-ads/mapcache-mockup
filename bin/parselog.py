@@ -49,7 +49,7 @@ for line in sys.stdin:
     'sub': s[18],
   }
   if ( log['type'] == 'BEGIN'
-       and log['func'] in [ 'mapcache_handler', '_thread_get_tile' ] ):
+       and log['func'] in [ 'mapcache_handler', '_thread_get_tile', '_thread_get_subtile' ] ):
     try:
       exid[log['ptid']] = exid[log['ptid']] + 1
     except KeyError:
@@ -74,7 +74,7 @@ for line in sys.stdin:
     if sample > statistics['max']: statistics['max'] = sample
     if sample < statistics['min']: statistics['min'] = sample
   if ( log['type'] == '*END*'
-       and log['func'] in [ 'mapcache_handler', '_thread_get_tile' ] ):
+       and log['func'] in [ 'mapcache_handler', '_thread_get_tile', '_thread_get_subtile' ] ):
     thread = log['thrkey']
     # Display log by thread with call graph indentation
     if args.log:

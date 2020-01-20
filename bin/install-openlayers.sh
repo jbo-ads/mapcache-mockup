@@ -51,6 +51,7 @@ cat <<-EOF > /var/www/html/ol/index.html
 				var view = new ol.View({ projection: 'EPSG:3857', center: ol.proj.fromLonLat([0, 0]), zoom: 0 });
 				var map = new ol.Map({ target: 'map', layers: layers, view: view });
 				map.addControl(new ol.control.LayerSwitcher());
+				map.addControl(new ol.control.ScaleLine());
 			</script>
 		</body>
 	</html>

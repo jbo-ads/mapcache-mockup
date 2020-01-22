@@ -107,7 +107,7 @@ index 7bc7dc7..f4d73ee 100644
    }
  }
 diff --git a/lib/core.c b/lib/core.c
-index 83ac103..e0d2f42 100644
+index 83ac103..5c7d26c 100644
 --- a/lib/core.c
 +++ b/lib/core.c
 @@ -55,10 +55,12 @@ typedef struct {
@@ -170,6 +170,25 @@ index 83ac103..e0d2f42 100644
    return response;
  }
  
+@@ -366,6 +374,7 @@ mapcache_map* mapcache_assemble_maps(mapcache_context *ctx, mapcache_map **maps,
+   maptiles = apr_pcalloc(ctx->pool,nmaps*sizeof(mapcache_tile**));
+   nmaptiles = apr_pcalloc(ctx->pool,nmaps*sizeof(int));
+   effectively_used_grid_links = apr_pcalloc(ctx->pool,nmaps*sizeof(mapcache_grid_link*));
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN mapcache_assemble_maps");
+   for(i=0; i<nmaps; i++) {
+     mapcache_tileset_get_map_tiles(ctx,maps[i]->tileset,maps[i]->grid_link,
+                                    &maps[i]->extent, maps[i]->width, maps[i]->height,
+@@ -429,8 +438,10 @@ mapcache_map* mapcache_assemble_maps(mapcache_context *ctx, mapcache_map **maps,
+   if(!basemap) {
+     ctx->set_error(ctx,404,
+                   "no tiles containing image data could be retrieved to create map (not in cache, and/or no source configured)");
++    ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_assemble_maps ERROR");
+     return NULL;
+   }
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_assemble_maps");
+   return basemap;
+ }
+ 
 diff --git a/lib/dimension.c b/lib/dimension.c
 index 9547907..ed6dd2c 100644
 --- a/lib/dimension.c
@@ -192,11 +211,63 @@ index 9547907..ed6dd2c 100644
  }
  
  mapcache_dimension* mapcache_dimension_values_create(mapcache_context *ctx, apr_pool_t *pool)
+diff --git a/lib/image.c b/lib/image.c
+index ab3a639..b11f232 100644
+--- a/lib/image.c
++++ b/lib/image.c
+@@ -94,6 +94,7 @@ void mapcache_image_merge(mapcache_context *ctx, mapcache_image *base, mapcache_
+   unsigned char *browptr, *orowptr, *bptr, *optr;
+ #endif
+ 
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN mapcache_image_merge");
+   if(base->w < overlay->w || base->h < overlay->h) {
+     ctx->set_error(ctx, 500, "attempting to merge an larger image onto another");
+     return;
+@@ -155,6 +156,7 @@ void mapcache_image_merge(mapcache_context *ctx, mapcache_image *base, mapcache_
+     orowptr += overlay->stride;
+   }
+ #endif
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_image_merge");
+ }
+ 
+ #ifndef USE_PIXMAN
 diff --git a/lib/tileset.c b/lib/tileset.c
-index a60a30a..d37cbf9 100644
+index a60a30a..2504564 100644
 --- a/lib/tileset.c
 +++ b/lib/tileset.c
-@@ -839,6 +839,7 @@ typedef struct {
+@@ -285,6 +285,7 @@ mapcache_image* mapcache_tileset_assemble_map_tiles(mapcache_context *ctx, mapca
+   mapcache_image *image;
+   mapcache_image *srcimage;
+   double tileresolution, dstminx, dstminy, hf, vf;
++  ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP BEGIN mapcache_tileset_assemble_map_tiles");
+ #ifdef DEBUG
+   /* we know at least one tile contains data */
+   for(i=0; i<ntiles; i++) {
+@@ -302,6 +303,7 @@ mapcache_image* mapcache_tileset_assemble_map_tiles(mapcache_context *ctx, mapca
+   if(ntiles == 0) {
+     image->has_alpha = MC_ALPHA_YES;
+     image->is_blank = MC_EMPTY_YES;
++    ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP END mapcache_tileset_assemble_map_tiles EMPTY");
+     return image;
+   }
+ 
+@@ -354,6 +356,7 @@ mapcache_image* mapcache_tileset_assemble_map_tiles(mapcache_context *ctx, mapca
+         break;
+       default:
+         ctx->set_error(ctx,500,"BUG: invalid grid origin");
++        ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP END mapcache_tileset_assemble_map_tiles ERROR");
+         return NULL;
+     }
+     if(tile->nodata) continue;
+@@ -402,6 +405,7 @@ mapcache_image* mapcache_tileset_assemble_map_tiles(mapcache_context *ctx, mapca
+   }
+   /* free the memory of the temporary source image */
+   apr_pool_cleanup_run(ctx->pool, srcimage->data, (void*)free) ;
++  ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP END mapcache_tileset_assemble_map_tiles");
+   return image;
+ }
+ 
+@@ -839,6 +843,7 @@ typedef struct {
  static void* APR_THREAD_FUNC _thread_get_subtile(apr_thread_t *thread, void *data)       
  {                                                                                        
    _thread_subtile * t = (_thread_subtile *)data;                                         
@@ -204,7 +275,7 @@ index a60a30a..d37cbf9 100644
    /* creates the tile from the source, takes care of metatiling */                       
    mapcache_tileset_tile_get_without_subdimensions(t->ctx, t->subtile->tile,              
        (t->tile->tileset->subdimension_read_only||!t->tile->tileset->source)?1:0);        
-@@ -846,6 +847,7 @@ static void* APR_THREAD_FUNC _thread_get_subtile(apr_thread_t *thread, void *dat
+@@ -846,6 +851,7 @@ static void* APR_THREAD_FUNC _thread_get_subtile(apr_thread_t *thread, void *dat
  #if !USE_THREADPOOL                                                                      
    apr_thread_exit(thread, APR_SUCCESS);                                                  
  #endif                                                                                   
@@ -212,7 +283,7 @@ index a60a30a..d37cbf9 100644
    return NULL;                                                                           
  }                                                                                        
  #endif // APR_HAS_THREADS                                                                
-@@ -862,6 +864,7 @@ void mapcache_tileset_tile_set_get_with_subdimensions(mapcache_context *ctx, map
+@@ -862,6 +868,7 @@ void mapcache_tileset_tile_set_get_with_subdimensions(mapcache_context *ctx, map
     * - either we didn't look up the tile directly (need to split dimension into sub-dimension and reassemble dynamically)
     * - either the direct lookup failed and we need to render/assemble the tiles from subdimensions
     */
@@ -220,11 +291,19 @@ index a60a30a..d37cbf9 100644
    subtiles = apr_array_make(ctx->pool,1,sizeof(mapcache_subtile));
    st.tile = tile;
    st.isFetched = MAPCACHE_FALSE;
-@@ -1060,12 +1063,14 @@ void mapcache_tileset_tile_set_get_with_subdimensions(mapcache_context *ctx, map
+@@ -907,6 +914,7 @@ void mapcache_tileset_tile_set_get_with_subdimensions(mapcache_context *ctx, map
+         mapcache_cache_tile_set(ctx, tile->tileset->_cache, tile);
+         GC_CHECK_ERROR(ctx);
+       }
++      ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP END mapcache_tileset_tile_set_get_with_subdimensions");
+       return;
+     } else {
+       for(j=0;j<n_subtiles;j++) {
+@@ -1060,12 +1068,14 @@ void mapcache_tileset_tile_set_get_with_subdimensions(mapcache_context *ctx, map
    }
  
  cleanup:
-+  ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP END mapcache_tileset_tile_set_get_with_subdimensions");
++  ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP END mapcache_tileset_tile_set_get_with_subdimensions CLEANUP");
    return;
  }
  
@@ -235,7 +314,7 @@ index a60a30a..d37cbf9 100644
    assert(tile->dimensions);
    if(tile->tileset->store_dimension_assemblies) {
      for(i=0;i<tile->dimensions->nelts;i++) {
-@@ -1089,7 +1094,9 @@ void mapcache_tileset_tile_get_with_subdimensions(mapcache_context *ctx, mapcach
+@@ -1089,7 +1099,9 @@ void mapcache_tileset_tile_get_with_subdimensions(mapcache_context *ctx, mapcach
        dim->cached_value = NULL;
      }
    }
@@ -246,7 +325,7 @@ index a60a30a..d37cbf9 100644
    
  }
  
-@@ -1116,6 +1123,7 @@ static void mapcache_tileset_tile_get_without_subdimensions(mapcache_context *ct
+@@ -1116,6 +1128,7 @@ static void mapcache_tileset_tile_get_without_subdimensions(mapcache_context *ct
  {
    int ret;
    mapcache_metatile *mt=NULL;
@@ -254,7 +333,7 @@ index a60a30a..d37cbf9 100644
    ret = mapcache_cache_tile_get(ctx, tile->tileset->_cache, tile);
    GC_CHECK_ERROR(ctx);
  
-@@ -1140,6 +1148,7 @@ static void mapcache_tileset_tile_get_without_subdimensions(mapcache_context *ct
+@@ -1140,6 +1153,7 @@ static void mapcache_tileset_tile_get_without_subdimensions(mapcache_context *ct
              tile->tileset->name);
        */
        tile->nodata = 1;
@@ -262,7 +341,7 @@ index a60a30a..d37cbf9 100644
        return;
      }
  
-@@ -1219,9 +1228,11 @@ static void mapcache_tileset_tile_get_without_subdimensions(mapcache_context *ct
+@@ -1219,9 +1233,11 @@ static void mapcache_tileset_tile_get_without_subdimensions(mapcache_context *ct
      apr_time_t expire_time = tile->mtime + apr_time_from_sec(tile->tileset->auto_expire);
      tile->expires = apr_time_sec(expire_time-now);
    }
@@ -274,7 +353,7 @@ index a60a30a..d37cbf9 100644
    if(tile->grid_link->outofzoom_strategy != MAPCACHE_OUTOFZOOM_NOTCONFIGURED &&
            tile->z > tile->grid_link->max_cached_zoom) {
      mapcache_tileset_outofzoom_get(ctx, tile);
-@@ -1229,7 +1240,9 @@ void mapcache_tileset_tile_get(mapcache_context *ctx, mapcache_tile *tile) {
+@@ -1229,7 +1245,9 @@ void mapcache_tileset_tile_get(mapcache_context *ctx, mapcache_tile *tile) {
    }
    if(tile->dimensions) {
      if(tile->tileset->dimension_assembly_type != MAPCACHE_DIMENSION_ASSEMBLY_NONE) {
@@ -285,7 +364,7 @@ index a60a30a..d37cbf9 100644
      } else {
        int i;
        mapcache_requested_dimension *rdim;
-@@ -1254,7 +1267,9 @@ void mapcache_tileset_tile_get(mapcache_context *ctx, mapcache_tile *tile) {
+@@ -1254,7 +1272,9 @@ void mapcache_tileset_tile_get(mapcache_context *ctx, mapcache_tile *tile) {
        }
      }
    }

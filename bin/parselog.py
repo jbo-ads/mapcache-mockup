@@ -78,7 +78,7 @@ for line in sys.stdin:
     thread = log['thrkey']
     # Display log by thread with call graph indentation
     if args.log:
-      disptype = { '*BEGIN*': 'BEGIN:', '*END*': 'END..:' }
+      disptype = { '*BEGIN*': 'BEGIN:', '*END*': 'END..:', 'BEGIN': 'begin:' }
       indent = 1
       seq = logbythread[thread]
       print('Thread #'+thread+':')

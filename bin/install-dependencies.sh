@@ -21,3 +21,4 @@ apt-get update
 apt-get install -y elasticsearch
 apt-get install -y dc
 apt-get install -y git gawk vim
+apt-get install -y ed imagemagick

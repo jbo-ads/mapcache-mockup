@@ -5,9 +5,10 @@ mkdir -p ${srcdir}
 cd ${srcdir}
 if [ ! -d mapcache ]
 then
-  git clone https://github.com/jbo-ads/mapcache.git
+  git clone https://github.com/mapserver/mapcache.git
   cd mapcache
-  git checkout master
+  git checkout fa73ef2 -b mockup-instrumentation
+  git apply /share/data/instrumentation.patch
 fi
 
 cd ${srcdir}

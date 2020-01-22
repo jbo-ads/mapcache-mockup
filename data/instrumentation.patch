@@ -1,0 +1,298 @@
+diff --git a/apache/mod_mapcache.c b/apache/mod_mapcache.c
+index e69ec7d..42e7f83 100644
+--- a/apache/mod_mapcache.c
++++ b/apache/mod_mapcache.c
+@@ -343,10 +343,12 @@ static int mapcache_handler(request_rec *r, mapcache_alias_entry *alias_entry) {
+ 
+   params = mapcache_http_parse_param_string(ctx, r->args);
+ 
++  ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "MOCKUP BEGIN mapcache_handler");
+   //ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "mapcache dispatch %s",r->path_info);
+ 
+   mapcache_service_dispatch_request(ctx,&request,r->path_info,params,ctx->config);
+   if(GC_HAS_ERROR(ctx) || !request) {
++    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "MOCKUP END mapcache_handler ERROR");
+     return write_http_response(apache_ctx,
+                                mapcache_core_respond_to_error(ctx));
+   }
+@@ -388,6 +390,7 @@ static int mapcache_handler(request_rec *r, mapcache_alias_entry *alias_entry) {
+     if(r->method_number == M_POST) {
+       read_post_body(apache_ctx, req_proxy);
+       if(GC_HAS_ERROR(ctx)) {
++        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "MOCKUP END mapcache_handler ERROR");
+         return write_http_response(apache_ctx, mapcache_core_respond_to_error(ctx));
+       }
+       if(!req_proxy->headers) {
+@@ -434,9 +437,11 @@ static int mapcache_handler(request_rec *r, mapcache_alias_entry *alias_entry) {
+   }
+ 
+   if(GC_HAS_ERROR(ctx)) {
++    ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "MOCKUP END mapcache_handler ERROR");
+     return write_http_response(apache_ctx,
+                                mapcache_core_respond_to_error(ctx));
+   }
++  ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "MOCKUP END mapcache_handler");
+   return write_http_response(apache_ctx,http_response);
+ }
+ 
+diff --git a/lib/cache.c b/lib/cache.c
+index fa7583f..b280f4b 100644
+--- a/lib/cache.c
++++ b/lib/cache.c
+@@ -30,6 +30,7 @@
+ 
+ int mapcache_cache_tile_get(mapcache_context *ctx, mapcache_cache *cache, mapcache_tile *tile) {
+   int i,rv;
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN mapcache_cache_tile_get");
+ #ifdef DEBUG
+   ctx->log(ctx,MAPCACHE_DEBUG,"calling tile_get on cache (%s): (tileset=%s, grid=%s, z=%d, x=%d, y=%d",cache->name,tile->tileset->name,tile->grid_link->grid->name,tile->z,tile->x, tile->y);
+ #endif
+@@ -49,6 +50,7 @@ int mapcache_cache_tile_get(mapcache_context *ctx, mapcache_cache *cache, mapcac
+     if(!GC_HAS_ERROR(ctx))
+       break;
+   }
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_cache_tile_get");
+   return rv;
+ }
+ 
+diff --git a/lib/cache_disk.c b/lib/cache_disk.c
+index 6db121f..8a444f8 100644
+--- a/lib/cache_disk.c
++++ b/lib/cache_disk.c
+@@ -408,6 +408,7 @@ static int _mapcache_cache_disk_get(mapcache_context *ctx, mapcache_cache *pcach
+   apr_mmap_t *tilemmap;
+   mapcache_cache_disk *cache = (mapcache_cache_disk*)pcache;
+ 
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN _mapcache_cache_disk_get");
+   cache->tile_key(ctx, cache, tile, &filename);
+   if(GC_HAS_ERROR(ctx)) {
+     return MAPCACHE_FAILURE;
+@@ -460,6 +461,7 @@ static int _mapcache_cache_disk_get(mapcache_context *ctx, mapcache_cache *pcach
+       ctx->set_error(ctx, 500,  "failed to copy image data, got %d of %d bytes",(int)size, (int)finfo.size);
+       return MAPCACHE_FAILURE;
+     }
++    ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END _mapcache_cache_disk_get");
+     return MAPCACHE_SUCCESS;
+   } else {
+     if(APR_STATUS_IS_ENOENT(rv)) {
+diff --git a/lib/cache_sqlite.c b/lib/cache_sqlite.c
+index 7bc7dc7..f4d73ee 100644
+--- a/lib/cache_sqlite.c
++++ b/lib/cache_sqlite.c
+@@ -634,7 +634,9 @@ static int _mapcache_cache_sqlite_get(mapcache_context *ctx, mapcache_cache *pca
+   struct sqlite_conn *conn;
+   sqlite3_stmt *stmt;
+   int ret;
+-  mapcache_pooled_connection *pc = mapcache_sqlite_get_conn(ctx,cache,tile,1);
++  mapcache_pooled_connection *pc;
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN _mapcache_cache_sqlite_get");
++  pc = mapcache_sqlite_get_conn(ctx,cache,tile,1);
+   if (GC_HAS_ERROR(ctx)) {
+     if(tile->tileset->read_only || !tile->tileset->source) {
+       mapcache_sqlite_release_conn(ctx, pc);
+@@ -665,6 +667,7 @@ static int _mapcache_cache_sqlite_get(mapcache_context *ctx, mapcache_cache *pca
+   if (ret == SQLITE_DONE) {
+     sqlite3_reset(stmt);
+     mapcache_sqlite_release_conn(ctx, pc);
++    ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END _mapcache_cache_sqlite_get CACHE_MISS");
+     return MAPCACHE_CACHE_MISS;
+   } else {
+     const void *blob = sqlite3_column_blob(stmt, 0);
+@@ -682,6 +685,7 @@ static int _mapcache_cache_sqlite_get(mapcache_context *ctx, mapcache_cache *pca
+     }
+     sqlite3_reset(stmt);
+     mapcache_sqlite_release_conn(ctx, pc);
++    ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END _mapcache_cache_sqlite_get");
+     return MAPCACHE_SUCCESS;
+   }
+ }
+diff --git a/lib/core.c b/lib/core.c
+index 83ac103..e0d2f42 100644
+--- a/lib/core.c
++++ b/lib/core.c
+@@ -55,10 +55,12 @@ typedef struct {
+ static void* APR_THREAD_FUNC _thread_get_tile(apr_thread_t *thread, void *data)
+ {
+   _thread_tile* t = (_thread_tile*)data;
++  t->ctx->log(t->ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN _thread_get_tile");
+   mapcache_tileset_tile_get(t->ctx, t->tile);
+ #if !USE_THREADPOOL
+   apr_thread_exit(thread, APR_SUCCESS);
+ #endif
++  t->ctx->log(t->ctx,MAPCACHE_DEBUG,"MOCKUP END _thread_get_tile");
+   return NULL;
+ }
+ 
+@@ -89,12 +91,14 @@ void mapcache_prefetch_tiles(mapcache_context *ctx, mapcache_tile **tiles, int n
+ #else
+   int i,rv;
+   _thread_tile* thread_tiles;
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN mapcache_prefetch_tiles");
+   if(ntiles==1 || ctx->config->threaded_fetching == 0) {
+     /* if threads disabled, or only fetching a single tile, don't launch a thread for the operation */
+     for(i=0; i<ntiles; i++) {
+       mapcache_tileset_tile_get(ctx, tiles[i]);
+       GC_CHECK_ERROR(ctx);
+     }
++    ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_prefetch_tiles");
+     return;
+   }
+ 
+@@ -160,6 +164,7 @@ void mapcache_prefetch_tiles(mapcache_context *ctx, mapcache_tile **tiles, int n
+     mapcache_tileset_tile_get(ctx, tiles[i]);
+     GC_CHECK_ERROR(ctx);
+   }
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_prefetch_tiles");
+ #else
+   /* experimental version using a threadpool, disabled for stability reasons */
+   apr_thread_pool_t *thread_pool;
+@@ -199,6 +204,7 @@ mapcache_http_response *mapcache_core_get_tile(mapcache_context *ctx, mapcache_r
+   mapcache_image_format *format;
+   mapcache_image_format_type t;
+   int i,is_empty=1; /* response image is initially empty */;
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN mapcache_core_get_tile");
+   base=NULL;
+   format = NULL;
+ 
+@@ -222,6 +228,7 @@ mapcache_http_response *mapcache_core_get_tile(mapcache_context *ctx, mapcache_r
+     response->code = 302;
+     apr_table_set(response->headers,"Location",req_tile->tiles[0]->redirect);
+     response->data = mapcache_buffer_create(0, ctx->pool);
++    ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_core_get_tile");
+     return response;
+   }
+ 
+@@ -351,6 +358,7 @@ mapcache_http_response *mapcache_core_get_tile(mapcache_context *ctx, mapcache_r
+     apr_table_setn(response->headers, "Expires", timestr);
+   }
+ 
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_core_get_tile");
+   return response;
+ }
+ 
+diff --git a/lib/dimension.c b/lib/dimension.c
+index 9547907..ed6dd2c 100644
+--- a/lib/dimension.c
++++ b/lib/dimension.c
+@@ -269,11 +269,15 @@ static void _mapcache_dimension_values_parse_xml(mapcache_context *ctx, mapcache
+ 
+ apr_array_header_t* mapcache_dimension_get_entries_for_value(mapcache_context *ctx, mapcache_dimension *dimension, const char *value,
+                        mapcache_tileset *tileset, mapcache_extent *extent, mapcache_grid *grid) {
++  apr_array_header_t * entries;
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN mapcache_dimension_get_entries_for_value");
+   if(!dimension->isTime) {
+-    return dimension->_get_entries_for_value(ctx, dimension, value, tileset, extent, grid);
++    entries = dimension->_get_entries_for_value(ctx, dimension, value, tileset, extent, grid);
+   } else {
+-    return mapcache_dimension_time_get_entries_for_value(ctx, dimension, value, tileset, extent, grid);
++    entries = mapcache_dimension_time_get_entries_for_value(ctx, dimension, value, tileset, extent, grid);
+   }
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_dimension_get_entries_for_value");
++  return entries;
+ }
+ 
+ mapcache_dimension* mapcache_dimension_values_create(mapcache_context *ctx, apr_pool_t *pool)
+diff --git a/lib/tileset.c b/lib/tileset.c
+index a60a30a..d37cbf9 100644
+--- a/lib/tileset.c
++++ b/lib/tileset.c
+@@ -839,6 +839,7 @@ typedef struct {
+ static void* APR_THREAD_FUNC _thread_get_subtile(apr_thread_t *thread, void *data)       
+ {                                                                                        
+   _thread_subtile * t = (_thread_subtile *)data;                                         
++  t->ctx->log(t->ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN _thread_get_subtile");
+   /* creates the tile from the source, takes care of metatiling */                       
+   mapcache_tileset_tile_get_without_subdimensions(t->ctx, t->subtile->tile,              
+       (t->tile->tileset->subdimension_read_only||!t->tile->tileset->source)?1:0);        
+@@ -846,6 +847,7 @@ static void* APR_THREAD_FUNC _thread_get_subtile(apr_thread_t *thread, void *dat
+ #if !USE_THREADPOOL                                                                      
+   apr_thread_exit(thread, APR_SUCCESS);                                                  
+ #endif                                                                                   
++  t->ctx->log(t->ctx,MAPCACHE_DEBUG,"MOCKUP END _thread_get_subtile");
+   return NULL;                                                                           
+ }                                                                                        
+ #endif // APR_HAS_THREADS                                                                
+@@ -862,6 +864,7 @@ void mapcache_tileset_tile_set_get_with_subdimensions(mapcache_context *ctx, map
+    * - either we didn't look up the tile directly (need to split dimension into sub-dimension and reassemble dynamically)
+    * - either the direct lookup failed and we need to render/assemble the tiles from subdimensions
+    */
++  ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP BEGIN mapcache_tileset_tile_set_get_with_subdimensions");
+   subtiles = apr_array_make(ctx->pool,1,sizeof(mapcache_subtile));
+   st.tile = tile;
+   st.isFetched = MAPCACHE_FALSE;
+@@ -1060,12 +1063,14 @@ void mapcache_tileset_tile_set_get_with_subdimensions(mapcache_context *ctx, map
+   }
+ 
+ cleanup:
++  ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP END mapcache_tileset_tile_set_get_with_subdimensions");
+   return;
+ }
+ 
+ void mapcache_tileset_tile_get_with_subdimensions(mapcache_context *ctx, mapcache_tile *tile) {
+   int i,ret;
+ 
++  ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP BEGIN mapcache_tileset_tile_get_with_subdimensions");
+   assert(tile->dimensions);
+   if(tile->tileset->store_dimension_assemblies) {
+     for(i=0;i<tile->dimensions->nelts;i++) {
+@@ -1089,7 +1094,9 @@ void mapcache_tileset_tile_get_with_subdimensions(mapcache_context *ctx, mapcach
+       dim->cached_value = NULL;
+     }
+   }
+-  return mapcache_tileset_tile_set_get_with_subdimensions(ctx,tile);
++  mapcache_tileset_tile_set_get_with_subdimensions(ctx,tile);
++  ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP END mapcache_tileset_tile_get_with_subdimensions");
++  return;
+   
+ }
+ 
+@@ -1116,6 +1123,7 @@ static void mapcache_tileset_tile_get_without_subdimensions(mapcache_context *ct
+ {
+   int ret;
+   mapcache_metatile *mt=NULL;
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN mapcache_tileset_tile_get_without_subdimensions");
+   ret = mapcache_cache_tile_get(ctx, tile->tileset->_cache, tile);
+   GC_CHECK_ERROR(ctx);
+ 
+@@ -1140,6 +1148,7 @@ static void mapcache_tileset_tile_get_without_subdimensions(mapcache_context *ct
+             tile->tileset->name);
+       */
+       tile->nodata = 1;
++      ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_tileset_tile_get_without_subdimensions CACHE_MISS");
+       return;
+     }
+ 
+@@ -1219,9 +1228,11 @@ static void mapcache_tileset_tile_get_without_subdimensions(mapcache_context *ct
+     apr_time_t expire_time = tile->mtime + apr_time_from_sec(tile->tileset->auto_expire);
+     tile->expires = apr_time_sec(expire_time-now);
+   }
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_tileset_tile_get_without_subdimensions");
+ }
+ 
+ void mapcache_tileset_tile_get(mapcache_context *ctx, mapcache_tile *tile) {
++  ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP BEGIN mapcache_tileset_tile_get");
+   if(tile->grid_link->outofzoom_strategy != MAPCACHE_OUTOFZOOM_NOTCONFIGURED &&
+           tile->z > tile->grid_link->max_cached_zoom) {
+     mapcache_tileset_outofzoom_get(ctx, tile);
+@@ -1229,7 +1240,9 @@ void mapcache_tileset_tile_get(mapcache_context *ctx, mapcache_tile *tile) {
+   }
+   if(tile->dimensions) {
+     if(tile->tileset->dimension_assembly_type != MAPCACHE_DIMENSION_ASSEMBLY_NONE) {
+-      return mapcache_tileset_tile_get_with_subdimensions(ctx,tile);
++      mapcache_tileset_tile_get_with_subdimensions(ctx,tile);
++      ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP END mapcache_tileset_tile_get");
++      return;
+     } else {
+       int i;
+       mapcache_requested_dimension *rdim;
+@@ -1254,7 +1267,9 @@ void mapcache_tileset_tile_get(mapcache_context *ctx, mapcache_tile *tile) {
+       }
+     }
+   }
+-  return mapcache_tileset_tile_get_without_subdimensions(ctx,tile, (tile->tileset->read_only||!tile->tileset->source)?1:0);
++  mapcache_tileset_tile_get_without_subdimensions(ctx,tile, (tile->tileset->read_only||!tile->tileset->source)?1:0);
++  ctx->log(ctx, MAPCACHE_DEBUG, "MOCKUP END mapcache_tileset_tile_get");
++  return;
+   
+ }
+ 

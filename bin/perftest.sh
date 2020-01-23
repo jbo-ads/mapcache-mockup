@@ -14,9 +14,9 @@ clearlog() {
 
 ###############################################################################
 WMTS_1() {
-  d=$1 z=$2 x=$3 y=$4 c=$5 l=$6
+  z=$1 x=$2 y=$3 c=$4 l=$5
   f=${FUNCNAME[0]}
-  printf "%-10s %-10s %4s %6s %6s %-16s %-20s " $f $d $z $x $y $c $l
+  printf "%-10s %4s %6s %6s %-16s %-20s " $f $z $x $y $c $l
 
   src="http://localhost:80/${c}/wmts"
   req="SERVICE=WMTS&REQUEST=GetTile"
@@ -47,13 +47,15 @@ WMTS_1() {
       exit 1
     fi
   done
-  printf "%30s " "$(dc <<< "${thost[@]} ${dcmean}")"
 
   tguest=($(
-      /share/bin/parselog.py < /var/log/apache2/error.log \
+      grep mapcache_handler /var/log/apache2/error.log \
+          | /share/bin/parselog.py \
           | awk -F'[ .{}]*' '/END.*mapcache_handler/{print $4/1000}'
   ))
+
   printf "%30s " "$(dc <<< "${tguest[@]} ${dcmean}")"
+  printf "%30s " "$(dc <<< "${thost[@]} ${dcmean}")"
   printf "\n"
   ### printf "# URL: %s\n" "${url}"
 }
@@ -61,9 +63,9 @@ WMTS_1() {
 
 ###############################################################################
 WMS_256() {
-  d=$1 z=$2 x=$3 y=$4 c=$5 l=$6
+  z=$1 x=$2 y=$3 c=$4 l=$5
   f=${FUNCNAME[0]}
-  printf "%-10s %-10s %4s %6s %6s %-16s %-20s " $f $d $z $x $y $c $l
+  printf "%-10s %4s %6s %6s %-16s %-20s " $f $z $x $y $c $l
 
   r="20037508.342"
   ntiles=$(dc <<< "2 $z ^pq")
@@ -102,13 +104,15 @@ WMS_256() {
       exit 1
     fi
   done
-  printf "%30s " "$(dc <<< "${thost[@]} ${dcmean}")"
 
   tguest=($(
-      /share/bin/parselog.py < /var/log/apache2/error.log \
+      grep mapcache_handler /var/log/apache2/error.log \
+          | /share/bin/parselog.py \
           | awk -F'[ .{}]*' '/END.*mapcache_handler/{print $4/1000}'
   ))
+
   printf "%30s " "$(dc <<< "${tguest[@]} ${dcmean}")"
+  printf "%30s " "$(dc <<< "${thost[@]} ${dcmean}")"
   printf "\n"
   ### printf "# URL: %s\n" "${url}"
 }
@@ -116,9 +120,9 @@ WMS_256() {
 
 ###############################################################################
 WMS_1024() {
-  d=$1 z=$2 x=$3 y=$4 c=$5 l=$6
+  z=$1 x=$2 y=$3 c=$4 l=$5
   f=${FUNCNAME[0]}
-  printf "%-10s %-10s %4s %6s %6s %-16s %-20s " $f $d $z $x $y $c $l
+  printf "%-10s %4s %6s %6s %-16s %-20s " $f $z $x $y $c $l
 
   r="20037508.342"
   ntiles=$(dc <<< "2 $z ^pq")
@@ -157,13 +161,15 @@ WMS_1024() {
       exit 1
     fi
   done
-  printf "%30s " "$(dc <<< "${thost[@]} ${dcmean}")"
 
   tguest=($(
-      /share/bin/parselog.py < /var/log/apache2/error.log \
+      grep mapcache_handler /var/log/apache2/error.log \
+          | /share/bin/parselog.py \
           | awk -F'[ .{}]*' '/END.*mapcache_handler/{print $4/1000}'
   ))
+
   printf "%30s " "$(dc <<< "${tguest[@]} ${dcmean}")"
+  printf "%30s " "$(dc <<< "${thost[@]} ${dcmean}")"
   printf "\n"
   ### printf "# URL: %s\n" "${url}"
 }
@@ -171,9 +177,9 @@ WMS_1024() {
 
 ###############################################################################
 WMTS_16() {
-  d=$1 z=$2 x=$3 y=$4 c=$5 l=$6
+  z=$1 x=$2 y=$3 c=$4 l=$5
   f=${FUNCNAME[0]}
-  printf "%-10s %-10s %4s %6s %6s %-16s %-20s " $f $d $z $x $y $c $l
+  printf "%-10s %4s %6s %6s %-16s %-20s " $f $z $x $y $c $l
 
   src="http://localhost:80/${c}/wmts"
   req="SERVICE=WMTS&REQUEST=GetTile"
@@ -222,7 +228,6 @@ WMTS_16() {
     done
     thost+=(${mes})
   done
-  printf "%30s " "$(dc <<< "${thost[@]} ${dcmean}")"
 
   rm -f apachelog_*
   csplit --quiet --digits=4 --prefix=apachelog_ /var/log/apache2/error.log '/MarkStartMap/' '{*}'
@@ -230,13 +235,15 @@ WMTS_16() {
   tguest=($(
     for i in apachelog_*
     do
-      printf "3p\n\$-7p\n" | ed -s $i
+      printf "3p\n\$-4p\n" | ed -s $i
     done \
       | awk -F'[ :]' '{
           t2=(($4*60+$5)*60+$6)*1000;
           if(t1>0){printf"%12g\n",t2-t1;t1=0}else{t1=t2}}'
   ))
+
   printf "%30s " "$(dc <<< "${tguest[@]} ${dcmean}")"
+  printf "%30s " "$(dc <<< "${thost[@]} ${dcmean}")"
   printf "\n"
   montage -geometry 256x256 -background black \
           tile00 tile10 tile20 tile30 \
@@ -248,19 +255,118 @@ WMTS_16() {
 
 
 ###############################################################################
-printf "# %-8s %-10s %4s %6s %6s %-16s %-20s %30s %30s\n" \
-    'type' 'id' 'zoom' 'minx' 'miny' 'conf.' 'layer' 'total client' 'total server' \
-    '----' '--' '----' '----' '----' '-----' '-----' '------------' '------------'
+printf "\n\n"
+printf "# %-8s %4s %6s %6s %-16s %-20s %30s %30s\n" \
+    'type' 'zoom' 'minx' 'miny' 'conf.' 'layer' 'total server-side' 'total client-side' \
+    '----' '----' '----' '----' '-----' '-----' '-----------------' '-----------------'
 
 if [ $# -eq 0 ]
 then
 
-  printf "\n# Basemap at zoom level 0 (1 tile) and zoom level 2 (16 tiles)\n"
+  if false ; then
+  printf "\n# World coverage of basemap at zoom levels 0 (1 tile) and 2 (16 tiles)\n"
 
-  nmes=100 WMTS_1    TEST_001 0 0 0 catalog base
-  nmes=100 WMS_256   TEST_002 0 0 0 catalog base
-  nmes=100 WMS_1024  TEST_003 2 0 0 catalog base
-  nmes=100 WMTS_16   TEST_004 2 0 0 catalog base
+  nmes=100 WMTS_1    0 0 0 catalog base
+  nmes=100 WMS_256   0 0 0 catalog base
+  nmes=100 WMS_1024  2 0 0 catalog base
+  nmes=100 WMTS_16   2 0 0 catalog base
+
+  printf "\n# World coverage of catalog (400 products) at zoom levels 0 (1 tile) and 2 (16 tiles)\n"
+
+  nmes=10  WMTS_1    0 0 0 catalog       catalog
+  nmes=10  WMS_256   0 0 0 catalog       catalog
+  nmes=1   WMS_1024  2 0 0 catalog       catalog
+  nmes=1   WMS_1024  2 0 0 catalog       catalog
+  nmes=1   WMS_1024  2 0 0 catalog       catalog
+  nmes=1   WMS_1024  2 0 0 catalog       catalog
+  nmes=1   WMS_1024  2 0 0 catalog       catalog
+  nmes=1   WMTS_16   2 0 0 catalog       catalog
+  nmes=1   WMTS_16   2 0 0 catalog       catalog
+  nmes=1   WMTS_16   2 0 0 catalog       catalog
+  nmes=1   WMTS_16   2 0 0 catalog       catalog
+  nmes=1   WMTS_16   2 0 0 catalog       catalog
+  nmes=1   WMS_1024  2 0 0 catalog-mt    catalog
+  nmes=1   WMS_1024  2 0 0 catalog-mt    catalog
+  nmes=1   WMS_1024  2 0 0 catalog-mt    catalog
+  nmes=1   WMS_1024  2 0 0 catalog-mt    catalog
+  nmes=1   WMS_1024  2 0 0 catalog-mt    catalog
+  nmes=1   WMTS_16   2 0 0 catalog-mt    catalog
+  nmes=1   WMTS_16   2 0 0 catalog-mt    catalog
+  nmes=1   WMTS_16   2 0 0 catalog-mt    catalog
+  nmes=1   WMTS_16   2 0 0 catalog-mt    catalog
+  nmes=1   WMTS_16   2 0 0 catalog-mt    catalog
+  nmes=1   WMS_1024  2 0 0 catalog-geo   catalog
+  nmes=1   WMS_1024  2 0 0 catalog-geo   catalog
+  nmes=1   WMS_1024  2 0 0 catalog-geo   catalog
+  nmes=1   WMS_1024  2 0 0 catalog-geo   catalog
+  nmes=1   WMS_1024  2 0 0 catalog-geo   catalog
+  nmes=1   WMTS_16   2 0 0 catalog-geo   catalog
+  nmes=1   WMTS_16   2 0 0 catalog-geo   catalog
+  nmes=1   WMTS_16   2 0 0 catalog-geo   catalog
+  nmes=1   WMTS_16   2 0 0 catalog-geo   catalog
+  nmes=1   WMTS_16   2 0 0 catalog-geo   catalog
+  nmes=1   WMS_1024  2 0 0 catalog-mtgeo catalog
+  nmes=1   WMS_1024  2 0 0 catalog-mtgeo catalog
+  nmes=1   WMS_1024  2 0 0 catalog-mtgeo catalog
+  nmes=1   WMS_1024  2 0 0 catalog-mtgeo catalog
+  nmes=1   WMS_1024  2 0 0 catalog-mtgeo catalog
+  nmes=1   WMTS_16   2 0 0 catalog-mtgeo catalog
+  nmes=1   WMTS_16   2 0 0 catalog-mtgeo catalog
+  nmes=1   WMTS_16   2 0 0 catalog-mtgeo catalog
+  nmes=1   WMTS_16   2 0 0 catalog-mtgeo catalog
+  nmes=1   WMTS_16   2 0 0 catalog-mtgeo catalog
+  fi
+
+  printf "\n# Zoom in on USA with catalog (16 tiles per map)\n"
+
+  nmes=10  WMS_1024  2    0    0  catalog-geo      catalog
+  nmes=10  WMS_1024  3    0    1  catalog-geo      catalog
+  nmes=10  WMS_1024  4    2    4  catalog-geo      catalog
+  nmes=10  WMS_1024  5    5   10  catalog-geo      catalog
+  nmes=10  WMS_1024  6   14   22  catalog-geo      catalog
+  nmes=10  WMS_1024  7   29   44  catalog-geo      catalog
+  nmes=10  WMS_1024  8   60   90  catalog-geo      catalog
+  nmes=10  WMS_1024  9  121  181  catalog-geo      catalog
+  nmes=10  WMS_1024 10  245  366  catalog-geo      catalog
+  nmes=10  WMS_1024 11  493  734  catalog-geo      catalog
+  nmes=10  WMS_1024 12  986 1471  catalog-geo      catalog
+  nmes=10  WMS_1024 13 1971 2945  catalog-geo      catalog
+  nmes=10  WMS_1024  2    0    0  catalog-mtgeo    catalog
+  nmes=10  WMS_1024  3    0    1  catalog-mtgeo    catalog
+  nmes=10  WMS_1024  4    2    4  catalog-mtgeo    catalog
+  nmes=10  WMS_1024  5    5   10  catalog-mtgeo    catalog
+  nmes=10  WMS_1024  6   14   22  catalog-mtgeo    catalog
+  nmes=10  WMS_1024  7   29   44  catalog-mtgeo    catalog
+  nmes=10  WMS_1024  8   60   90  catalog-mtgeo    catalog
+  nmes=10  WMS_1024  9  121  181  catalog-mtgeo    catalog
+  nmes=10  WMS_1024 10  245  366  catalog-mtgeo    catalog
+  nmes=10  WMS_1024 11  493  734  catalog-mtgeo    catalog
+  nmes=10  WMS_1024 12  986 1471  catalog-mtgeo    catalog
+  nmes=10  WMS_1024 13 1971 2945  catalog-mtgeo    catalog
+  nmes=10  WMS_1024  2    0    0  catalog-amtgeo   catalog
+  nmes=10  WMS_1024  3    0    1  catalog-amtgeo   catalog
+  nmes=10  WMS_1024  4    2    4  catalog-amtgeo   catalog
+  nmes=10  WMS_1024  5    5   10  catalog-amtgeo   catalog
+  nmes=10  WMS_1024  6   14   22  catalog-amtgeo   catalog
+  nmes=10  WMS_1024  7   29   44  catalog-amtgeo   catalog
+  nmes=10  WMS_1024  8   60   90  catalog-amtgeo   catalog
+  nmes=10  WMS_1024  9  121  181  catalog-amtgeo   catalog
+  nmes=10  WMS_1024 10  245  366  catalog-amtgeo   catalog
+  nmes=10  WMS_1024 11  493  734  catalog-amtgeo   catalog
+  nmes=10  WMS_1024 12  986 1471  catalog-amtgeo   catalog
+  nmes=10  WMS_1024 13 1971 2945  catalog-amtgeo   catalog
+  nmes=10  WMS_1024  2    0    0  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024  3    0    1  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024  4    2    4  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024  5    5   10  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024  6   14   22  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024  7   29   44  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024  8   60   90  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024  9  121  181  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024 10  245  366  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024 11  493  734  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024 12  986 1471  catalog-mtamtgeo catalog
+  nmes=10  WMS_1024 13 1971 2945  catalog-mtamtgeo catalog
 
   exit
 
@@ -329,10 +435,10 @@ then
   nmes=10 WMTS_16    TEST_007 4  8 12 mapcache-produit produits-i-geo
   nmes=10 WMTS_16    TEST_007 4 12 12 mapcache-produit produits-i-geo
 
-elif [ $# -eq 7 ]
+elif [ $# -eq 6 ]
 then
 
-  nmes=${nmes:-1} eval $1 $2 $3 $4 $5 $6 $7
+  nmes=${nmes:-1} eval $1 $2 $3 $4 $5 $6
 
 elif [ $# -eq 1 ]
 then
@@ -340,16 +446,6 @@ then
   case "x$1" in
     xclearlog)
       eval $1
-      ;;
-    xcompile)
-      vagrant ssh -c 'sudo apachectl -k stop ;
-                      cd /vagrant/mapcache/build && sudo make install ;
-                      sudo apachectl -k start'
-      ;;
-    xrestart)
-      vagrant ssh -c 'sudo apachectl -k stop ;
-                      sleep 2 ;
-                      sudo apachectl -k start'
       ;;
   esac
 

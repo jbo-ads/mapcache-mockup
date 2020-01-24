@@ -107,7 +107,7 @@ index 7bc7dc7..f4d73ee 100644
    }
  }
 diff --git a/lib/core.c b/lib/core.c
-index 83ac103..5c7d26c 100644
+index 83ac103..1456030 100644
 --- a/lib/core.c
 +++ b/lib/core.c
 @@ -55,10 +55,12 @@ typedef struct {
@@ -189,6 +189,22 @@ index 83ac103..5c7d26c 100644
    return basemap;
  }
  
+@@ -441,6 +452,7 @@ mapcache_http_response *mapcache_core_get_map(mapcache_context *ctx, mapcache_re
+   mapcache_map *basemap = NULL;
+   char *timestr;
+ 
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN mapcache_core_get_map");
+ #ifdef DEBUG
+   if(req_map->nmaps ==0) {
+     ctx->set_error(ctx,500,"BUG: get_map called with 0 maps");
+@@ -536,6 +548,7 @@ mapcache_http_response *mapcache_core_get_map(mapcache_context *ctx, mapcache_re
+   }
+ 
+   response->mtime = basemap->mtime;
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END mapcache_core_get_map");
+   return response;
+ }
+ 
 diff --git a/lib/dimension.c b/lib/dimension.c
 index 9547907..ed6dd2c 100644
 --- a/lib/dimension.c
@@ -231,6 +247,26 @@ index ab3a639..b11f232 100644
  }
  
  #ifndef USE_PIXMAN
+diff --git a/lib/imageio_jpeg.c b/lib/imageio_jpeg.c
+index 430a3b0..31bf921 100644
+--- a/lib/imageio_jpeg.c
++++ b/lib/imageio_jpeg.c
+@@ -162,6 +162,7 @@ mapcache_buffer* _mapcache_imageio_jpeg_encode(mapcache_context *ctx, mapcache_i
+   unsigned int row;
+   mapcache_buffer *buffer = mapcache_buffer_create(5000, ctx->pool);
+   cinfo.err = jpeg_std_error(&jerr);
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN _mapcache_imageio_jpeg_encode");
+   jpeg_create_compress(&cinfo);
+ 
+   cinfo.dest = (struct jpeg_destination_mgr *)(*cinfo.mem->alloc_small) (
+@@ -226,6 +227,7 @@ mapcache_buffer* _mapcache_imageio_jpeg_encode(mapcache_context *ctx, mapcache_i
+   jpeg_finish_compress(&cinfo);
+   jpeg_destroy_compress(&cinfo);
+   free(rowdata);
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END _mapcache_imageio_jpeg_encode");
+   return buffer;
+ }
+ 
 diff --git a/lib/tileset.c b/lib/tileset.c
 index a60a30a..2504564 100644
 --- a/lib/tileset.c

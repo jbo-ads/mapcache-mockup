@@ -40,8 +40,8 @@ ${bindir}/genprod.sh --random 200 usa,america -12973503 3456176 -9069712 6281289
 
 
 # Generate random simulated products over Europe
-${bindir}/genprod.sh --random 50 europe 523440 5557277 3204240 7044436
+${bindir}/genprod.sh --random 80 europe 523440 5557277 3204240 7044436
 
 
 # Generate random simulated products over Australia
-${bindir}/genprod.sh --random 100 australia,oceania 13585000 -3708113 16256015 -1995923
+${bindir}/genprod.sh --random 105 australia,oceania 13585000 -3708113 16256015 -1995923

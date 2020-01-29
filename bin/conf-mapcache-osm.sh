@@ -121,8 +121,16 @@ cat <<-EOF > ${cfgdir}/osm.xml
 				<layers>remote-opentopomap</layers>
 			</params></getmap>
 		</source>
-		<cache name="opentopomap" type="sqlite3">
-			<dbfile>/share/caches/osm/opentopomap.sqlite3</dbfile>
+		<cache name="opentopomap-z1-7" type="sqlite3">
+			<dbfile>/share/caches/osm/opentopomap/z0-0-0.sqlite3</dbfile>
+		</cache>
+		<cache name="opentopomap-z8" type="sqlite3">
+			<top>8</top>
+			<dbfile>/share/caches/osm/opentopomap/z{top}-{top_x}-{inv_top_y}.sqlite3</dbfile>
+		</cache>
+		<cache name="opentopomap" type="composite">
+			<cache min-zoom="0" max-zoom="7">opentopomap-z1-7</cache>
+			<cache min-zoom="8">opentopomap-z8</cache>
 		</cache>
 		<tileset name="opentopomap">
 			<source>opentopomap</source>

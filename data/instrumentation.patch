@@ -76,10 +76,10 @@ index 6db121f..8a444f8 100644
    } else {
      if(APR_STATUS_IS_ENOENT(rv)) {
 diff --git a/lib/cache_sqlite.c b/lib/cache_sqlite.c
-index 7bc7dc7..f4d73ee 100644
+index 043040f..27cda2f 100644
 --- a/lib/cache_sqlite.c
 +++ b/lib/cache_sqlite.c
-@@ -634,7 +634,9 @@ static int _mapcache_cache_sqlite_get(mapcache_context *ctx, mapcache_cache *pca
+@@ -664,7 +664,9 @@ static int _mapcache_cache_sqlite_get(mapcache_context *ctx, mapcache_cache *pca
    struct sqlite_conn *conn;
    sqlite3_stmt *stmt;
    int ret;
@@ -90,7 +90,7 @@ index 7bc7dc7..f4d73ee 100644
    if (GC_HAS_ERROR(ctx)) {
      if(tile->tileset->read_only || !tile->tileset->source) {
        mapcache_sqlite_release_conn(ctx, pc);
-@@ -665,6 +667,7 @@ static int _mapcache_cache_sqlite_get(mapcache_context *ctx, mapcache_cache *pca
+@@ -695,6 +697,7 @@ static int _mapcache_cache_sqlite_get(mapcache_context *ctx, mapcache_cache *pca
    if (ret == SQLITE_DONE) {
      sqlite3_reset(stmt);
      mapcache_sqlite_release_conn(ctx, pc);
@@ -98,7 +98,7 @@ index 7bc7dc7..f4d73ee 100644
      return MAPCACHE_CACHE_MISS;
    } else {
      const void *blob = sqlite3_column_blob(stmt, 0);
-@@ -682,6 +685,7 @@ static int _mapcache_cache_sqlite_get(mapcache_context *ctx, mapcache_cache *pca
+@@ -712,6 +715,7 @@ static int _mapcache_cache_sqlite_get(mapcache_context *ctx, mapcache_cache *pca
      }
      sqlite3_reset(stmt);
      mapcache_sqlite_release_conn(ctx, pc);
@@ -265,6 +265,25 @@ index 430a3b0..31bf921 100644
    free(rowdata);
 +  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END _mapcache_imageio_jpeg_encode");
    return buffer;
+ }
+ 
+diff --git a/lib/imageio_png.c b/lib/imageio_png.c
+index e7c13bf..f877546 100644
+--- a/lib/imageio_png.c
++++ b/lib/imageio_png.c
+@@ -437,10 +437,13 @@ void _mapcache_imageio_png_decode_to_image(mapcache_context *ctx, mapcache_buffe
+ 
+ mapcache_image* _mapcache_imageio_png_decode(mapcache_context *ctx, mapcache_buffer *buffer)
+ {
+-  mapcache_image *img = mapcache_image_create(ctx);
++  mapcache_image *img;
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP BEGIN _mapcache_imageio_png_decode");
++  img = mapcache_image_create(ctx);
+   _mapcache_imageio_png_decode_to_image(ctx,buffer,img);
+   if(GC_HAS_ERROR(ctx))
+     return NULL;
++  ctx->log(ctx,MAPCACHE_DEBUG,"MOCKUP END _mapcache_imageio_png_decode");
+   return img;
  }
  
 diff --git a/lib/tileset.c b/lib/tileset.c

@@ -8,6 +8,7 @@ then
   git clone https://github.com/jbo-ads/mapcache.git
   cd mapcache
   git checkout ztop
+  git apply /share/data/instrumentation.patch
 fi
 
 cd ${srcdir}

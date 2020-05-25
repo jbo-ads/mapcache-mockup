@@ -1,0 +1,148 @@
+#!/bin/bash
+
+# Borrowed from Kakyrady/pbar.sh
+# <https://gist.github.com/Kakurady/0619f8ad90a00934022196046c4589da>
+#
+# Example:
+#    $ for ((i=0;i<=1000;i++)) ; do progress -o -s light $i 1000 50; done
+#
+# Color codes:
+
+colorcodes() {
+  for ((j=0;j<16;j+=8))
+  do
+    printf "#  "
+    for ((i=0;i<8;i++))
+    do
+      printf " %3d: " $((j+i))
+      tput setab $((j+i))
+      printf "   "
+      tput sgr 0
+    done
+    echo
+  done
+  printf "#\n"
+  for ((j=16;j<256;j+=6))
+  do
+    printf "#  "
+    for ((i=0;i<6;i++))
+    do
+      printf " %3d: " $((j+i))
+      tput setab $((j+i))
+      printf "   "
+      tput sgr 0
+    done
+    echo
+  done
+}
+
+POSITIONAL=()
+while [ $# -gt 0 ]
+do
+  case "$1" in
+  -o|--overwrite)
+    overwrite=yes
+    shift
+    ;;
+  -l|--light)
+    style=light
+    shift
+    ;;
+  -s|--style)
+    style="$2"
+    shift
+    shift
+    ;;
+  -c|--colors)
+    colors=yes
+    ink=$2
+    paper=$3
+    shift
+    shift
+    shift
+    ;;
+  --colorcodes)
+    colorcodes
+    exit
+    ;;
+  *)
+    POSITIONAL+=("$1")
+    shift
+    ;;
+  esac
+done
+set -- "${POSITIONAL[@]}"
+
+# First char is "empty", last char is "full", in-between chars are "progress"
+case "$style" in
+arrow)
+  pchars=(   " "   ">"   "="   )
+  ;;
+hash|sharp)
+  pchars=(   " "   "#"   "#"   )
+  ;;
+gray|grey)
+  pchars=(   " "   "░"   "▒"   "▓"   "█"   "█"   )
+  ;;
+dot|dot1|bottomdot)
+  pchars=(   " "   "⡀"   "⣀"   "⣄"   "⣤"   "⣦"   "⣶"   "⣷"   "⣿"   "⣿"   )
+  ;;
+dot2|middledot)
+  pchars=(   " "   "⠄"   "⠆"   "⡆"   "⡇"   "⡧"   "⡷"   "⣷"   "⣿"   "⣿"   )
+  ;;
+dot3|topdot)
+  pchars=(   " "   "⠁"   "⠉"   "⠋"   "⠛"   "⠟"   "⠿"   "⡿"   "⣿"   "⣿"   )
+  ;;
+dot4|snakedot)
+  pchars=(   " "   "⡀"   "⡄"   "⡆"   "⡇"   "⡏"   "⡟"   "⡿"   "⣿"   "⣿"   )
+  ;;
+light)
+  pchars=(   " "   "▏"   "🭰"   "🭱"   "🭲"   "🭳"   "🭴"   "🭵"   "▕"   " "    )
+  ;;
+*)
+  pchars=(   " "   "▏"   "▎"   "▍"   "▌"   "▋"   "▊"   "▉"   "█"   "█"    )
+  ;;
+esac
+
+nchars=$(( ${#pchars[@]} - 1 ))
+val=${1:-0}
+max=${2:-100}
+len=${3:-10}
+desc="${4:-}"
+steps=$((nchars*len*val/max))
+
+for (( i=0 ; i<len ; i++ ))
+do
+  cur=$((steps - i*nchars))
+  if [ $cur -lt 0 ]
+  then
+    cur=0
+  elif [ $cur -gt $nchars ]
+  then
+    cur=$((nchars))
+  elif [ $cur -eq $nchars ]
+  then
+    cur=$((nchars-1))
+  fi
+  buf="${buf}${pchars[cur]}"
+done
+
+if [ "$colors" = "yes" ]
+then
+ buf="$(tput setaf $ink)$(tput setab $paper)${buf}$(tput sgr 0)"
+fi
+if [ "$overwrite" = "yes" ]
+then
+  tput sc
+fi
+printf "$desc [${buf}] $(dc <<< "2k 100 $val * $max /p")%%"
+if [ "$overwrite" = "yes" ]
+then
+  tput rc
+  if [ $val -ge $max ]
+  then
+    printf "\n"
+  fi
+else
+  printf "\n"
+fi

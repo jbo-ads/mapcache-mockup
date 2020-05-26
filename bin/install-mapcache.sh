@@ -5,9 +5,9 @@ mkdir -p ${srcdir}
 cd ${srcdir}
 if [ ! -d mapcache ]
 then
-  git clone https://github.com/mapserver/mapcache.git
+  git clone https://github.com/jbo-ads/mapcache.git
   cd mapcache
-  git checkout rel-1-10-0
+  git checkout allow-path-in-dim
 fi
 
 cd ${srcdir}

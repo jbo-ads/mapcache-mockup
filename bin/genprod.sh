@@ -116,13 +116,20 @@ geotiff2tiles() {
 
 # Append entry to catalog
 appendtocatalog() {
-  name=$1 minx=$2 miny=$3 maxx=$4 maxy=$5
+  name=$1 minx=$2 miny=$3 maxx=$4 maxy=$5 keywords=$6
+  IFS=, read prefix other <<< ${keywords}
+  if [ -z "${prefix}" ]
+  then
+    prefix="."
+  fi
+  path=${prefix}/${name}
   catalog="/share/caches/product/catalog.sqlite"
   if [ ! -f "${catalog}" ]
   then
     sqlite3 "${catalog}" \
       "CREATE TABLE catalog(
           name TEXT,
+          path TEXT,
           minx REAL,
           miny REAL,
           maxx REAL,
@@ -130,8 +137,8 @@ appendtocatalog() {
           keywords TEXT);"
   fi
   sqlite3 "${catalog}" \
-    "INSERT OR IGNORE INTO catalog(name,minx,miny,maxx,maxy,keywords)
-     VALUES(\"${name}\",${minx},${miny},${maxx},${maxy},\"${keywords}\");"
+    "INSERT OR IGNORE INTO catalog(name,path,minx,miny,maxx,maxy,keywords)
+     VALUES(\"${name}\",\"${path}\",${minx},${miny},${maxx},${maxy},\"${keywords}\");"
 }
 
 # Generate a single simulated product

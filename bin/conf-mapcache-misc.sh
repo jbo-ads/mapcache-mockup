@@ -44,8 +44,16 @@ cat <<-EOF > ${cfgdir}/misc.xml
 				<layers>remote-esri</layers>
 			</params></getmap>
 		</source>
-		<cache name="esri" type="sqlite3">
-			<dbfile>/share/caches/misc/esri.sqlite3</dbfile>
+                <cache name="esri-z0-7" type="sqlite3">
+			<dbfile>/share/caches/misc/esri/z0-0-0.sqlite3</dbfile>
+		</cache>
+		<cache name="esri-z8" type="sqlite3">
+			<top>8</top>
+			<dbfile>/share/caches/misc/esri/z{top}-{top_x}-{top_y}.sqlite3</dbfile>
+		</cache>
+		<cache name="esri" type="composite">
+			<cache min-zoom="0" max-zoom="7">esri-z0-7</cache>
+			<cache min-zoom="8">esri-z8</cache>
 		</cache>
 		<tileset name="esri">
 			<source>esri</source>
